@@ -3,389 +3,289 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Gestión de Estudiantes y Asistencia</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/locales/es.global.min.js"></script>
+    <title>Escáner QR Pro</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f4f7f6;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        header {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        header h1 {
+            color: #2c3e50;
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        header p {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+
+        /* Zona de la Cámara */
+        #reader-wrapper {
+            position: relative;
+            width: 100%;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #2c3e50;
+            display: none; /* Se muestra al activar */
+        }
+
+        #reader {
+            width: 100%;
+        }
+
+        /* Botones */
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-stop {
+            background-color: #e74c3c;
+            display: none;
+        }
+
+        /* Historial de Escaneos */
+        .history-section {
+            margin-top: 25px;
+        }
+
+        .history-section h2 {
+            font-size: 18px;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .clear-btn {
+            background: none;
+            border: none;
+            color: #e74c3c;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .history-list {
+            list-style: none;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            border-left: 4px solid #2ecc71;
+            font-size: 14px;
+            word-break: break-all;
+        }
+
+        .history-item .meta {
+            display: block;
+            font-size: 11px;
+            color: #95a5a6;
+            margin-top: 5px;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #bdc3c7;
+            font-size: 14px;
+            padding: 20px;
+        }
+    </style>
 </head>
-<body class="bg-gray-100 text-gray-800 font-sans min-h-screen">
+<body>
 
-    <nav class="bg-blue-600 text-white shadow-md p-4 sticky top-0 z-50">
-        <div class="container mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-            <h1 class="text-xl font-bold tracking-wide">🎓 Control de Estudiantes y Asistencia</h1>
-            <div class="flex flex-wrap gap-2">
-                <button onclick="nuevoEstudiante()" class="bg-green-500 hover:bg-green-600 px-4 py-2 rounded-lg font-semibold shadow-sm transition text-sm">➕ Nuevo Estudiante</button>
-                <button onclick="abrirLectorQR()" class="bg-purple-500 hover:bg-purple-600 px-4 py-2 rounded-lg font-semibold shadow-sm transition text-sm">📷 Escanear QR</button>
-                <button onclick="gestionarAsistenciaManual()" class="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold shadow-sm transition text-sm">📝 Asistencia Manual</button>
-                <button onclick="exportarBackup()" class="bg-gray-800 hover:bg-gray-900 px-4 py-2 rounded-lg font-semibold shadow-sm transition text-sm">💾 Exportar Backup (.js)</button>
-            </div>
-        </div>
-    </nav>
+    <header>
+        <h1>Escáner QR Pro</h1>
+        <p>Escanear y registrar datos al instante</p>
+    </header>
 
-    <main class="container mx-auto p-4 md:p-6 grid grid-cols-1 xl:grid-cols-3 gap-6">
-        
-        <div class="xl:col-span-2 bg-white p-4 rounded-xl shadow-md border border-gray-200">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-lg font-bold text-gray-700">📋 Listado de Estudiantes</h2>
-                <span id="totalEstudiantes" class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">20 Estudiantes</span>
-            </div>
-            
-            <div class="overflow-x-auto rounded-lg border border-gray-200">
-                <table class="w-full text-sm text-left text-gray-500">
-                    <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
-                        <tr>
-                            <th class="px-4 py-3">DNI</th>
-                            <th class="px-4 py-3">Estudiante</th>
-                            <th class="px-4 py-3 hidden sm:table-cell">Género</th>
-                            <th class="px-4 py-3 text-center">Edad</th>
-                            <th class="px-4 py-3 hidden md:table-cell">Teléfono</th>
-                            <th class="px-4 py-3 text-center">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tablaEstudiantes" class="divide-y divide-gray-200">
-                        </tbody>
-                </table>
-            </div>
+    <div class="container">
+        <button id="start-btn" class="btn">Activar Cámara</button>
+        <button id="stop-btn" class="btn btn-stop">Detener Cámara</button>
+
+        <div id="reader-wrapper">
+            <div id="reader"></div>
         </div>
 
-        <div class="space-y-6">
-            <div id="contenedorQR" class="hidden bg-white p-4 rounded-xl shadow-md border border-gray-200 text-center">
-                <h3 class="text-md font-bold text-gray-700 mb-2">📷 Lector QR Activo</h3>
-                <div id="reader" class="w-full overflow-hidden rounded-lg border bg-black"></div>
-                <button onclick="cerrarLectorQR()" class="mt-3 bg-red-500 hover:bg-red-600 text-white px-4 py-1.5 rounded-lg text-xs font-semibold transition">Detener Cámara</button>
-            </div>
-
-            <div class="bg-white p-4 rounded-xl shadow-md border border-gray-200">
-                <h2 class="text-lg font-bold text-gray-700 mb-4">📅 Calendario de Asistencias</h2>
-                <div id="calendar" class="text-xs"></div>
-            </div>
+        <div class="history-section">
+            <h2>
+                Historial de Registros
+                <button id="clear-btn" class="clear-btn">Limpiar todo</button>
+            </h2>
+            <ul id="history-list" class="history-list">
+                </ul>
         </div>
-
-    </main>
+    </div>
 
     <script>
-        // 1. Datos iniciales (20 Registros Base)
-        let estudiantes = [
-            { dni: "45871239", nombres: "Carlos Alberto", apellidos: "Mendoza Ruiz", genero: "Masculino", edad: 21, telefono: "987654321" },
-            { dni: "72145698", nombres: "Ana Lucía", apellidos: "Gómez Peralta", genero: "Femenino", edad: 19, telefono: "951847623" },
-            { dni: "10487532", nombres: "Mateo Alexander", apellidos: "Quispe Huamán", genero: "Masculino", edad: 23, telefono: "912345678" },
-            { dni: "48963215", nombres: "María Fernanda", apellidos: "Castro Vega", genero: "Femenino", edad: 20, telefono: "963852741" },
-            { dni: "70541289", nombres: "Juan Diego", apellidos: "Flores Mamani", genero: "Masculino", edad: 22, telefono: "947159263" },
-            { dni: "44125896", nombres: "Sofia Valentina", apellidos: "Villanueva Rios", genero: "Femenino", edad: 18, telefono: "925413687" },
-            { dni: "09854123", nombres: "Luis Ángel", apellidos: "Chávez Torres", genero: "Masculino", edad: 25, telefono: "936258147" },
-            { dni: "73214569", nombres: "Camila Belén", apellidos: "Días Morales", genero: "Femenino", edad: 21, telefono: "974123658" },
-            { dni: "46781235", nombres: "Sebastian", apellidos: "Ramirez Espinoza", genero: "Masculino", edad: 20, telefono: "915987432" },
-            { dni: "71458962", nombres: "Valeria Nicole", apellidos: "Gutiérrez Rojas", genero: "Femenino", edad: 19, telefono: "982364159" },
-            { dni: "42569814", nombres: "Diego Alonso", apellidos: "Sánchez Vargas", genero: "Masculino", edad: 24, telefono: "961742358" },
-            { dni: "75896321", nombres: "Andrea Jimena", apellidos: "Palomino Ortiz", genero: "Femenino", edad: 22, telefono: "934851267" },
-            { dni: "10236547", nombres: "Gabriel Omar", apellidos: "Castillo Luna", genero: "Masculino", edad: 18, telefono: "917456329" },
-            { dni: "47895213", nombres: "Claudia Marcela", apellidos: "Paredes Soto", genero: "Femenino", edad: 23, telefono: "955632147" },
-            { dni: "70215489", nombres: "Rodrigo Iván", apellidos: "Alva Contreras", genero: "Masculino", edad: 21, telefono: "993214785" },
-            { dni: "43658921", nombres: "Danielan Alejandra", apellidos: "Navarro Cruz", genero: "Femenino", edad: 20, telefono: "928741369" },
-            { dni: "74125896", nombres: "Kevin Josué", apellidos: "Benites Fuentes", Masculino: "Masculino", edad: 19, telefono: "941258369", genero: "Masculino" },
-            { dni: "09632587", nombres: "Natalia Isabel", apellidos: "Campos Medina", genero: "Femenino", edad: 26, telefono: "966325874" },
-            { dni: "48521369", nombres: "Franco David", apellidos: "Salazar Reyes", genero: "Masculino", edad: 22, telefono: "971458963" },
-            { dni: "72369841", nombres: "Luciana del Pilar", apellidos: "Guerrero Silva", genero: "Femenino", edad: 20, telefono: "954123789" }
-        ];
+        // Elementos del DOM
+        const startBtn = document.getElementById('start-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const readerWrapper = document.getElementById('reader-wrapper');
+        const historyList = document.getElementById('history-list');
+        const clearBtn = document.getElementById('clear-btn');
 
-        // Estructura de asistencias: [{ id, title (Nombre), start (Fecha YYYY-MM-DD), color, dni }]
-        let asistencias = [];
-        let calendar;
-        let html5QrCode;
+        // Instancia del escáner (se apunta al ID del div contenedor)
+        let html5QrCode = new Html5Qrcode("reader");
 
-        // Inicialización al cargar la página
-        document.addEventListener('DOMContentLoaded', () => {
-            renderEstudiantes();
-            inicializarCalendario();
-        });
+        // Cargar historial previo desde LocalStorage al iniciar la página
+        document.addEventListener('DOMContentLoaded', displayHistory);
 
-        // 2. Renderizar Tabla de Estudiantes
-        function renderEstudiantes() {
-            const tabla = document.getElementById('tablaEstudiantes');
-            document.getElementById('totalEstudiantes').textContent = `${estudiantes.length} Estudiantes`;
-            tabla.innerHTML = '';
+        // Evento para iniciar la cámara
+        startBtn.addEventListener('click', () => {
+            readerWrapper.style.display = 'block';
+            startBtn.style.display = 'none';
+            stopBtn.style.display = 'block';
 
-            estudiantes.forEach((est, index) => {
-                tabla.innerHTML += `
-                    <tr class="bg-white hover:bg-gray-50 border-b border-gray-200">
-                        <td class="px-4 py-3 font-semibold text-gray-900">${est.dni}</td>
-                        <td class="px-4 py-3">
-                            <div class="font-medium text-gray-800">${est.nombres}</div>
-                            <div class="text-xs text-gray-400">${est.apellidos}</div>
-                        </td>
-                        <td class="px-4 py-3 hidden sm:table-cell text-xs bg-gray-50 text-center rounded-md">${est.genero}</td>
-                        <td class="px-4 py-3 text-center">${est.edad}</td>
-                        <td class="px-4 py-3 hidden md:table-cell text-xs">${est.telefono}</td>
-                        <td class="px-4 py-3 text-center space-x-1">
-                            <button onclick="editarEstudiante(${index})" class="text-blue-600 hover:text-blue-900 font-semibold p-1 text-xs">Editar</button>
-                            <button onclick="eliminarEstudiante(${index})" class="text-red-600 hover:text-red-900 font-semibold p-1 text-xs">Eliminar</button>
-                        </td>
-                    </tr>
-                `;
-            });
-        }
-
-        // 3. Inicializar FullCalendar
-        function inicializarCalendario() {
-            const calendarEl = document.getElementById('calendar');
-            calendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: 'dayGridMonth',
-                locale: 'es',
-                headerToolbar: {
-                    left: 'prev,next',
-                    center: 'title',
-                    right: 'today'
-                },
-                events: function(info, successCallback, failureCallback) {
-                    successCallback(asistencias);
-                },
-                eventClick: function(info) {
-                    // Permitir eliminar asistencia desde el calendario
-                    Swal.fire({
-                        title: 'Eliminar Asistencia',
-                        text: `¿Deseas retirar la asistencia de ${info.event.title}?`,
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonText: 'Sí, remover',
-                        cancelButtonText: 'Cancelar'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            asistencias = asistencias.filter(a => a.id !== info.event.id);
-                            calendar.refetchEvents();
-                            Swal.fire('Removido', 'Asistencia eliminada.', 'success');
-                        }
-                    });
-                }
-            });
-            calendar.render();
-        }
-
-        // 4. Formulario de SweetAlert2 Común para Crear/Editar
-        function getEstudianteFormHTML(est = {}) {
-            return `
-                <input id="swal-dni" class="swal2-input" placeholder="DNI (8 dígitos)" value="${est.dni || ''}" ${est.dni ? 'disabled' : ''}>
-                <input id="swal-nombres" class="swal2-input" placeholder="Nombres" value="${est.nombres || ''}">
-                <input id="swal-apellidos" class="swal2-input" placeholder="Apellidos" value="${est.apellidos || ''}">
-                <select id="swal-genero" class="swal2-input">
-                    <option value="Masculino" ${est.genero === 'Masculino' ? 'selected' : ''}>Masculino</option>
-                    <option value="Femenino" ${est.genero === 'Femenino' ? 'selected' : ''}>Femenino</option>
-                </select>
-                <input id="swal-edad" type="number" class="swal2-input" placeholder="Edad" value="${est.edad || ''}">
-                <input id="swal-telefono" class="swal2-input" placeholder="Teléfono" value="${est.telefono || ''}">
-            `;
-        }
-
-        // CRUD: Registrar Nuevo Estudiante
-        function nuevoEstudiante() {
-            Swal.fire({
-                title: 'Registrar Estudiante',
-                html: getEstudianteFormHTML(),
-                focusConfirm: false,
-                showCancelButton: true,
-                confirmButtonText: 'Guardar',
-                preConfirm: () => {
-                    const dni = document.getElementById('swal-dni').value.trim();
-                    const nombres = document.getElementById('swal-nombres').value.trim();
-                    const apellidos = document.getElementById('swal-apellidos').value.trim();
-                    const genero = document.getElementById('swal-genero').value;
-                    const edad = parseInt(document.getElementById('swal-edad').value);
-                    const telefono = document.getElementById('swal-telefono').value.trim();
-
-                    if (!dni || !nombres || !apellidos || !edad || !telefono) {
-                        Swal.showValidationMessage('Todos los campos son obligatorios');
-                        return false;
-                    }
-                    if (estudiantes.some(e => e.dni === dni)) {
-                        Swal.showValidationMessage('El DNI ingresado ya existe');
-                        return false;
-                    }
-                    return { dni, nombres, apellidos, genero, edad, telefono };
-                }
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    estudiantes.push(result.value);
-                    renderEstudiantes();
-                    Swal.fire('¡Éxito!', 'Estudiante registrado correctamente.', 'success');
-                }
-            });
-        }
-
-        // CRUD: Editar Datos Estudiante
-        function editarEstudiante(index) {
-            const est = estudiantes[index];
-            Swal.fire({
-                title: 'Editar Estudiante',
-                html: getEstudianteFormHTML(est),
-                focusConfirm: false,
-                showCancelButton: true,
-                confirmButtonText: 'Actualizar',
-                preConfirm: () => {
-                    const nombres = document.getElementById('swal-nombres').value.trim();
-                    const apellidos = document.getElementById('swal-apellidos').value.trim();
-                    const genero = document.getElementById('swal-genero').value;
-                    const edad = parseInt(document.getElementById('swal-edad').value);
-                    const telefono = document.getElementById('swal-telefono').value.trim();
-
-                    if (!nombres || !apellidos || !edad || !telefono) {
-                        Swal.showValidationMessage('Todos los campos son obligatorios');
-                        return false;
-                    }
-                    return { dni: est.dni, nombres, apellidos, genero, edad, telefono };
-                }
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    estudiantes[index] = result.value;
-                    renderEstudiantes();
-                    Swal.fire('Actualizado', 'Datos guardados correctamente.', 'success');
-                }
-            });
-        }
-
-        // CRUD: Eliminar Estudiante
-        function eliminarEstudiante(index) {
-            Swal.fire({
-                title: '¿Estás seguro?',
-                text: `Vas a eliminar a ${estudiantes[index].nombres}. Esta acción no se puede deshacer.`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Sí, eliminar',
-                cancelButtonText: 'Cancelar'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    estudiantes.splice(index, 1);
-                    renderEstudiantes();
-                    Swal.fire('Eliminado', 'El registro ha sido removido.', 'success');
-                }
-            });
-        }
-
-        // 5. Gestión Remota/Manual de Asistencias mediante Modal
-        function gestionarAsistenciaManual() {
-            let opcionesEstudiantes = estudiantes.map(e => `<option value="${e.dni}">${e.apellidos}, ${e.nombres} (${e.dni})</option>`).join('');
-            let hoy = new Date().toISOString().split('T')[0];
-
-            Swal.fire({
-                title: 'Registro de Asistencia Manual',
-                html: `
-                    <label class="block text-left text-xs text-gray-500 mb-1">Seleccionar Estudiante:</label>
-                    <select id="asis-dni" class="swal2-input m-0 w-full mb-3">${opcionesEstudiantes}</select>
-                    <label class="block text-left text-xs text-gray-500 mb-1">Fecha de Registro:</label>
-                    <input id="asis-fecha" type="date" class="swal2-input m-0 w-full" value="${hoy}">
-                `,
-                focusConfirm: false,
-                showCancelButton: true,
-                confirmButtonText: 'Registrar',
-                preConfirm: () => {
-                    return {
-                        dni: document.getElementById('asis-dni').value,
-                        fecha: document.getElementById('asis-fecha').value
-                    }
-                }
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    procesarRegistroAsistencia(result.value.dni, result.value.fecha);
-                }
-            });
-        }
-
-        // Lógica de validación e inyección de asistencia al Calendario
-        function procesarRegistroAsistencia(dni, fecha) {
-            const estudiante = estudiantes.find(e => e.dni === dni);
-            if (!estudiante) {
-                Swal.fire('Error', 'Estudiante no encontrado.', 'error');
-                return false;
-            }
-
-            // Validar si ya se registró ese mismo día
-            const yaAsistio = asistencias.some(a => a.dni === dni && a.start === fecha);
-            if (yaAsistio) {
-                Swal.fire('Aviso', `${estudiante.nombres} ya cuenta con registro para el día ${fecha}.`, 'info');
-                return false;
-            }
-
-            // Agregar evento al calendario
-            asistencias.push({
-                id: 'asist_' + Date.now() + Math.random().toString(36).substr(2, 4),
-                title: `${estudiante.nombres} ${estudiante.apellidos.split(' ')[0]}`,
-                start: fecha,
-                color: '#10B981', // Verde esmeralda
-                dni: dni
-            });
-
-            calendar.refetchEvents();
-            return true;
-        }
-
-        // 6. Integración del Lector QR empleando Cámara Móvil
-        function abrirLectorQR() {
-            document.getElementById('contenedorQR').classList.remove('hidden');
-            
-            html5QrCode = new Html5Qrcode("reader");
-            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-
-            // Intentará iniciar de forma predeterminada con la cámara trasera (environment)
-            html5QrCode.start(
-                { facingMode: "environment" }, 
-                config, 
-                (decodedText) => {
-                    // Si lee con éxito, el texto decodificado debe ser el DNI
-                    let hoy = new Date().toISOString().split('T')[0];
-                    let exito = procesarRegistroAsistencia(decodedText.trim(), hoy);
-                    
-                    if(exito) {
-                        Swal.fire('QR Escaneado', `Asistencia registrada el día de hoy para el DNI: ${decodedText}`, 'success');
-                        cerrarLectorQR();
-                    }
-                },
-                (errorMessage) => {
-                    // Filtrado silencioso de logs de escaneo fallido continuo por fotograma
-                }
-            ).catch((err) => {
-                console.error("Error al iniciar cámara: ", err);
-                Swal.fire('Error de Cámara', 'No se pudo acceder a la cámara. Asegúrate de dar los permisos o usar HTTPS.', 'error');
-                document.getElementById('contenedorQR').classList.add('hidden');
-            });
-        }
-
-        function cerrarLectorQR() {
-            if (html5QrCode) {
-                html5QrCode.stop().then(() => {
-                    document.getElementById('contenedorQR').classList.add('hidden');
-                }).catch(err => console.error("Error al detener cámara", err));
-            } else {
-                document.getElementById('contenedorQR').classList.add('hidden');
-            }
-        }
-
-        // 7. Exportación de Backup como archivo JS consumible
-        function exportarBackup() {
-            const backupData = {
-                fecha_exportacion: new Date().toISOString(),
-                total_estudiantes: estudiantes.length,
-                estudiantes: estudiantes,
-                asistencias: asistencias
+            // Configuración para apuntar a la cámara trasera en móviles y definir un área de escaneo (cuadrado)
+            const config = { 
+                fps: 10, 
+                qrbox: { width: 250, height: 250 } 
             };
 
-            // Estructuramos el contenido como código JS ejecutable/declarativo
-            const stringData = `/** BACKUP SISTEMA DE GESTION **/\nconst BACKUP_DATA = ${JSON.stringify(backupData, null, 4)};`;
+            html5QrCode.start(
+                { facingMode: "environment" }, // Prioriza la cámara trasera
+                config,
+                onScanSuccess
+            ).catch(err => {
+                alert(`Error al acceder a la cámara: ${err}`);
+                resetUI();
+            });
+        });
+
+        // Evento para detener la cámara manualmente
+        stopBtn.addEventListener('click', stopCamera);
+
+        // Qué hacer cuando se reconoce un código QR con éxito
+        function onScanSuccess(decodedText, decodedResult) {
+            // Detener la cámara inmediatamente para evitar múltiples lecturas repetidas
+            stopCamera();
             
-            const blob = new Blob([stringData], { type: "application/javascript;charset=utf-8" });
-            const url = URL.createObjectURL(blob);
+            // Sonido de vibración si el dispositivo lo soporta (feedback táctil)
+            if (navigator.vibrate) navigator.vibrate(100);
+
+            // Obtener fecha y hora actual
+            const now = new Date();
+            const dateTimeStr = now.toLocaleDateString() + ' - ' + now.toLocaleTimeString();
+
+            // Guardar en el almacenamiento local (LocalStorage)
+            saveRecord(decodedText, dateTimeStr);
             
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = `backup_sistema_${new Date().toISOString().slice(0,10)}.js`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            
-            Swal.fire('¡Copia Guardada!', 'Se descargó el archivo .js con todos los registros actuales.', 'success');
+            // Refrescar la interfaz para mostrar el nuevo registro
+            displayHistory();
         }
+
+        // Apagar la cámara de forma limpia
+        function stopCamera() {
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().then(() => {
+                    resetUI();
+                }).catch(err => console.error("Error al detener la cámara.", err));
+            } else {
+                resetUI();
+            }
+        }
+
+        // Resetear la interfaz gráfica de los botones
+        function resetUI() {
+            readerWrapper.style.display = 'none';
+            startBtn.style.display = 'block';
+            stopBtn.style.display = 'none';
+        }
+
+        // Guardar registro en LocalStorage
+        function saveRecord(text, datetime) {
+            let records = localStorage.getItem('qr_records') ? JSON.parse(localStorage.getItem('qr_records')) : [];
+            // Insertar al inicio para que el último escaneo aparezca primero
+            records.unshift({ text, datetime });
+            localStorage.setItem('qr_records', JSON.stringify(records));
+        }
+
+        // Renderizar el historial guardado
+        function displayHistory() {
+            historyList.innerHTML = '';
+            let records = localStorage.getItem('qr_records') ? JSON.parse(localStorage.getItem('qr_records')) : [];
+
+            if (records.length === 0) {
+                historyList.innerHTML = '<li class="empty-state">No hay registros guardados.</li>';
+                return;
+            }
+
+            records.forEach(record => {
+                const li = document.createElement('li');
+                li.className = 'history-item';
+                
+                // Si el texto es un enlace válido, lo hacemos clickeable
+                let contentHTML = record.text;
+                if(record.text.startsWith('http://') || record.text.startsWith('https://')) {
+                    contentHTML = `<a href="${record.text}" target="_blank" style="color:#2980b9; text-decoration:none; font-weight:bold;">${record.text}</a>`;
+                }
+
+                li.innerHTML = `
+                    <div><strong>Contenido:</strong> ${contentHTML}</div>
+                    <span class="meta">📅 Escaneado el: ${record.datetime}</span>
+                `;
+                historyList.appendChild(li);
+            });
+        }
+
+        // Limpiar el historial completo
+        clearBtn.addEventListener('click', () => {
+            if(confirm('¿Estás seguro de que quieres borrar todos los registros?')) {
+                localStorage.removeItem('qr_records');
+                displayHistory();
+            }
+        });
     </script>
 </body>
 </html>
